@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+env/
+venv/
+.env
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Data & models (DVC will version data if desired)
+data/raw/
+data/processed/
+models/
+mlruns/
+*.ckpt
+*.pth
+*.pt
+
+# DVC cache and temp (if local)
+.dvc/
+.cache/
+.dvcignore
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Docker
+docker-compose.override.yml
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Sensitive files
+*.pem
+*.key
+secrets.yml
