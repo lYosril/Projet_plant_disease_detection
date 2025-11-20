@@ -16,9 +16,9 @@ matplotlib
 seaborn
 
 #MLOps
-mlflow    # Track BOTH MODELS and compare them
+mlflow
 dvc
-dvc[gdrive]  # or choose your remote
+dvc[gdrive]
 
 #Monitoring
 evidently
