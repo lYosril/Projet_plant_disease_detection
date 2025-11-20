@@ -1,0 +1,38 @@
+#Core
+numpy
+pandas
+#Deep Learning (PyTorch)
+torch
+torchvision
+torchaudio
+# Optional: For training large models (EfficientNet, ViT)
+timm 
+#Image Processing
+opencv-python
+Pillow
+# Model Training & Evaluation
+scikit-learn
+matplotlib
+seaborn
+
+#MLOps
+mlflow    # Track BOTH MODELS and compare them
+dvc
+dvc[gdrive]  # or choose your remote
+
+#Monitoring
+evidently
+
+#API Deployment
+fastapi
+uvicorn[standard]
+python-multipart
+
+#Model Export
+onnx
+onnxruntime
+
+#Utils
+tqdm
+pyyaml
+joblib
