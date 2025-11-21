@@ -16,7 +16,7 @@ build/
 *.sublime-project
 *.sublime-workspace
 
-# Data & models (DVC will version data if desired)
+# Data & models
 data/raw/
 data/processed/
 models/
@@ -25,7 +25,7 @@ mlruns/
 *.pth
 *.pt
 
-# DVC cache and temp (if local)
+# DVC cache & temp
 .dvc/
 .cache/
 .dvcignore
