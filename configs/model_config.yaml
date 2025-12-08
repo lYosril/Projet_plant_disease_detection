@@ -1,0 +1,26 @@
+# model_config.yaml
+
+models:
+  resnet50:
+    input_shape: [224, 224, 3]
+    lr: 0.0001
+    epochs: 20
+    batch_size: 32
+    pretrained: true
+
+  efficientnet:
+    input_shape: [224, 224, 3]
+    lr: 0.0001
+    epochs: 20
+    batch_size: 32
+    pretrained: true
+
+training:
+  loss: "sparse_categorical_crossentropy"
+  metrics: ["accuracy"]
+
+saving:
+  model_dir: "models"
+  resnet_name: "resnet50.h5"
+  efficient_name: "efficientnet.h5"
+  metrics_path: "reports/metrics.json"
