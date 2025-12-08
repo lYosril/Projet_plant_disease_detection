@@ -1,0 +1,21 @@
+paths:
+  raw_data: "data/raw/plantvillage"
+  intermediate: "data/intermediate/dataset.pkl"
+  processed: "data/processed"
+
+image:
+  size: [224, 224]
+  channels: 3
+
+split:
+  test_size: 0.2
+  val_size: 0.1
+  random_state: 42
+
+augmentation:
+  enabled: true
+  rotation_range: 15
+  width_shift: 0.1
+  height_shift: 0.1
+  zoom_range: 0.1
+  horizontal_flip: true
