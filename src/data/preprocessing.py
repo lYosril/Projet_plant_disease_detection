@@ -1,23 +1,72 @@
 import os
 import numpy as np
-from sklearn.model_selection import train_test_split
+import shutil
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
-def normalize_images(images):
-    """Normalize images to [0, 1]."""
-    return images.astype("float32") / 255.0
+# ============================================================
+# Paths and split ratios
+# ============================================================
+RAW_DIR = "data/raw"
+PROCESSED_DIR = "data/processed"
+TEST_RATIO = 0.1   # 10% test
+VAL_RATIO = 0.2    # 20% validation from remaining
+BATCH_SIZE = 32
+IMG_SIZE = (224, 224)
 
 
-def augment_data(X_train, y_train, augment=False):
+# ============================================================
+# Split raw dataset into train/val/test on disk
+# ============================================================
+def split_dataset_on_disk(raw_dir=RAW_DIR, processed_dir=PROCESSED_DIR,
+                          test_ratio=TEST_RATIO, val_ratio=VAL_RATIO, random_state=42):
     """
-    Apply image augmentation using Keras ImageDataGenerator.
-    Useful for model generalization.
+    Splits images into train/val/test folders on disk for lazy loading.
+    Only copies files; skips directories.
+    Automatically handles extra top-level folder (e.g., PlantVillage).
     """
+    np.random.seed(random_state)
 
-    if not augment:
-        return X_train, y_train, None  # No generator used
+    # Detect if there is an extra top-level folder
+    top_level_subdirs = [d for d in os.listdir(raw_dir) if os.path.isdir(os.path.join(raw_dir, d))]
+    if len(top_level_subdirs) == 1:
+        raw_dir = os.path.join(raw_dir, top_level_subdirs[0])
 
-    datagen = ImageDataGenerator(
+    classes = [d for d in os.listdir(raw_dir) if os.path.isdir(os.path.join(raw_dir, d))]
+
+    for cls in classes:
+        cls_path = os.path.join(raw_dir, cls)
+        images = [f for f in os.listdir(cls_path) if os.path.isfile(os.path.join(cls_path, f))]
+        np.random.shuffle(images)
+
+        n_test = int(len(images) * test_ratio)
+        n_val = int(len(images) * val_ratio)
+
+        val_imgs = images[:n_val]
+        test_imgs = images[n_val:n_val + n_test]
+        train_imgs = images[n_val + n_test:]
+
+        for subset_name, subset_imgs in zip(
+            ["train", "val", "test"], [train_imgs, val_imgs, test_imgs]
+        ):
+            subset_dir = os.path.join(processed_dir, subset_name, cls)
+            os.makedirs(subset_dir, exist_ok=True)
+            for img in subset_imgs:
+                src_path = os.path.join(cls_path, img)
+                dst_path = os.path.join(subset_dir, img)
+                if os.path.isfile(src_path):
+                    shutil.copy2(src_path, dst_path)
+
+    print(f"Dataset successfully split into train/val/test under '{processed_dir}'.")
+
+
+# ============================================================
+# Create Keras ImageDataGenerators
+# ============================================================
+def create_generators(img_size=IMG_SIZE, batch_size=BATCH_SIZE):
+    """Return train, val, test generators with augmentation for training only."""
+    # Training generator with augmentation
+    train_datagen = ImageDataGenerator(
+        rescale=1./255,
         rotation_range=15,
         width_shift_range=0.1,
         height_shift_range=0.1,
@@ -26,82 +75,45 @@ def augment_data(X_train, y_train, augment=False):
         fill_mode="nearest"
     )
 
-    datagen.fit(X_train)
-    return X_train, y_train, datagen
+    # Validation/test generator (no augmentation)
+    test_datagen = ImageDataGenerator(rescale=1./255)
 
-
-def split_dataset(X, y, test_size=0.2, val_size=0.1, random_state=42):
-    """
-    Split dataset into train, validation, and test sets.
-    Train: (1 - test_size - val_size)
-    """
-
-    # First split train+val vs test
-    X_temp, X_test, y_temp, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state, stratify=y
+    train_gen = train_datagen.flow_from_directory(
+        os.path.join(PROCESSED_DIR, "train"),
+        target_size=img_size,
+        batch_size=batch_size,
+        class_mode='categorical'
     )
 
-    # Now split (train+val) into train and val
-    val_ratio = val_size / (1 - test_size)
-
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_temp, y_temp, test_size=val_ratio, random_state=random_state, stratify=y_temp
+    val_gen = test_datagen.flow_from_directory(
+        os.path.join(PROCESSED_DIR, "val"),
+        target_size=img_size,
+        batch_size=batch_size,
+        class_mode='categorical'
     )
 
-    return X_train, X_val, X_test, y_train, y_val, y_test
+    test_gen = test_datagen.flow_from_directory(
+        os.path.join(PROCESSED_DIR, "test"),
+        target_size=img_size,
+        batch_size=batch_size,
+        class_mode='categorical',
+        shuffle=False
+    )
+
+    return train_gen, val_gen, test_gen
 
 
-def save_processed(
-    X_train, X_val, X_test, y_train, y_val, y_test,
-    save_dir="data/processed"
-):
-    """Save processed datasets as numpy arrays."""
-    
-    os.makedirs(save_dir, exist_ok=True)
-
-    np.save(os.path.join(save_dir, "X_train.npy"), X_train)
-    np.save(os.path.join(save_dir, "X_val.npy"), X_val)
-    np.save(os.path.join(save_dir, "X_test.npy"), X_test)
-
-    np.save(os.path.join(save_dir, "y_train.npy"), y_train)
-    np.save(os.path.join(save_dir, "y_val.npy"), y_val)
-    np.save(os.path.join(save_dir, "y_test.npy"), y_test)
-
-    print(f"Processed files saved to: {save_dir}")
-
-
-def preprocess_pipeline(
-    X, y,
-    augment=False
-):
-    """
-    Full preprocessing pipeline:
-    - Normalize
-    - Split
-    - Augment (optional)
-    - Save processed files
-    """
-
-    print("Normalizing images...")
-    X = normalize_images(X)
-
-    print("Splitting dataset...")
-    X_train, X_val, X_test, y_train, y_val, y_test = split_dataset(X, y)
-
-    print("Applying augmentation..." if augment else "No augmentation.")
-    X_train, y_train, datagen = augment_data(X_train, y_train, augment)
-
-    print("Saving processed data...")
-    save_processed(X_train, X_val, X_test, y_train, y_val, y_test)
-
-    return X_train, X_val, X_test, y_train, y_val, y_test, datagen
-
-
+# ============================================================
+# Main execution
+# ============================================================
 if __name__ == "__main__":
-    # Example usage
-    from src.data.load_data import load_dataset
+    os.makedirs(PROCESSED_DIR, exist_ok=True)
 
-    X, y, classes = load_dataset()
+    print("Splitting dataset on disk...")
+    split_dataset_on_disk()
 
-    preprocess_pipeline(X, y, augment=True)
-    print("Processing complete.")
+    print("Creating generators...")
+    train_gen, val_gen, test_gen = create_generators()
+
+    print("Generators ready. You can now feed them directly into model.fit():")
+    print(f"Train samples: {train_gen.n}, Validation samples: {val_gen.n}, Test samples: {test_gen.n}")

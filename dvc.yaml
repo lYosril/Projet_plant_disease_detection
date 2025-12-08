@@ -1,33 +1,35 @@
 stages:
   load:
-    cmd: python src/data/load_data.py data/raw data/processed
+    cmd: python -m src.data.load_data
     deps:
       - src/data/load_data.py
       - data/raw
     outs:
-      - data/processed/raw_data.csv
+      - data/intermediate/dataset.pkl
 
   preprocess:
-    cmd: python src/data/preprocessing.py data/processed/raw_data.csv data/processed/processed_data.csv
+    cmd: python -m src.data.preprocessing
     deps:
       - src/data/preprocessing.py
-      - data/processed/raw_data.csv
+      - data/raw
     outs:
-      - data/processed/processed_data.csv
+      - data/processed/train
+      - data/processed/val
+      - data/processed/test
 
   train:
-    cmd: python src/model/train.py data/processed/processed_data.csv models/model.pkl
+    cmd: python -m src.models.train
     deps:
-      - src/model/train.py
-      - data/processed/processed_data.csv
+      - src/models/train.py
+      - data/processed/train
+      - data/processed/val
     outs:
-      - models/model.pkl
+      - models
 
   evaluate:
-    cmd: python src/model/evaluate.py models/model.pkl data/processed/processed_data.csv metrics/metrics.json
+    cmd: python -m src.models.evaluate
     deps:
-      - src/model/evaluate.py
-      - models/model.pkl
-      - data/processed/processed_data.csv
+      - src/models/evaluate.py
+      - models
     outs:
-      - metrics/metrics.json
+      - reports/metrics.json
