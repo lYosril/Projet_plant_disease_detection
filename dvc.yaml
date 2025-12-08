@@ -1,35 +1,36 @@
 stages:
-  load:
-    cmd: python -m src.data.load_data
-    deps:
-      - src/data/load_data.py
-      - data/raw
-    outs:
-      - data/intermediate/dataset.pkl
-
   preprocess:
     cmd: python -m src.data.preprocessing
     deps:
       - src/data/preprocessing.py
       - data/raw
     outs:
-      - data/processed/train
-      - data/processed/val
-      - data/processed/test
+      - data/processed/X_train.pkl
+      - data/processed/y_train.pkl
+      - data/processed/X_val.pkl
+      - data/processed/y_val.pkl
+      - data/processed/X_test.pkl
+      - data/processed/y_test.pkl
 
   train:
     cmd: python -m src.models.train
     deps:
       - src/models/train.py
-      - data/processed/train
-      - data/processed/val
+      - data/processed/X_train.pkl
+      - data/processed/y_train.pkl
+      - data/processed/X_val.pkl
+      - data/processed/y_val.pkl
     outs:
-      - models
+      - models/resnet50.h5
+      - models/efficientnet.h5
 
   evaluate:
     cmd: python -m src.models.evaluate
     deps:
       - src/models/evaluate.py
-      - models
+      - models/resnet50.h5
+      - models/efficientnet.h5
+      - data/processed/X_test.pkl
+      - data/processed/y_test.pkl
     outs:
       - reports/metrics.json

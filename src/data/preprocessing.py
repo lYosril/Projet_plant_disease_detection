@@ -1,119 +1,56 @@
 import os
+import pickle
 import numpy as np
-import shutil
+from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import yaml
 
-# ============================================================
-# Paths and split ratios
-# ============================================================
-RAW_DIR = "data/raw"
-PROCESSED_DIR = "data/processed"
-TEST_RATIO = 0.1   # 10% test
-VAL_RATIO = 0.2    # 20% validation from remaining
-BATCH_SIZE = 32
-IMG_SIZE = (224, 224)
+# Load config
+with open("config/data_config.yaml") as f:
+    cfg = yaml.safe_load(f)
 
+processed_dir = cfg["paths"]["processed"]
+img_size = tuple(cfg["image"]["size"])
+split_cfg = cfg["split"]
+aug_cfg = cfg["augmentation"]
 
-# ============================================================
-# Split raw dataset into train/val/test on disk
-# ============================================================
-def split_dataset_on_disk(raw_dir=RAW_DIR, processed_dir=PROCESSED_DIR,
-                          test_ratio=TEST_RATIO, val_ratio=VAL_RATIO, random_state=42):
-    """
-    Splits images into train/val/test folders on disk for lazy loading.
-    Only copies files; skips directories.
-    Automatically handles extra top-level folder (e.g., PlantVillage).
-    """
-    np.random.seed(random_state)
+def normalize_images(images):
+    return images.astype("float32") / 255.0
 
-    # Detect if there is an extra top-level folder
-    top_level_subdirs = [d for d in os.listdir(raw_dir) if os.path.isdir(os.path.join(raw_dir, d))]
-    if len(top_level_subdirs) == 1:
-        raw_dir = os.path.join(raw_dir, top_level_subdirs[0])
+def preprocess_pipeline():
+    # Load raw dataset
+    with open("data/intermediate/dataset.pkl", "rb") as f:
+        X, y, classes = pickle.load(f)
 
-    classes = [d for d in os.listdir(raw_dir) if os.path.isdir(os.path.join(raw_dir, d))]
+    print("Normalizing images...")
+    X = normalize_images(X)
 
-    for cls in classes:
-        cls_path = os.path.join(raw_dir, cls)
-        images = [f for f in os.listdir(cls_path) if os.path.isfile(os.path.join(cls_path, f))]
-        np.random.shuffle(images)
-
-        n_test = int(len(images) * test_ratio)
-        n_val = int(len(images) * val_ratio)
-
-        val_imgs = images[:n_val]
-        test_imgs = images[n_val:n_val + n_test]
-        train_imgs = images[n_val + n_test:]
-
-        for subset_name, subset_imgs in zip(
-            ["train", "val", "test"], [train_imgs, val_imgs, test_imgs]
-        ):
-            subset_dir = os.path.join(processed_dir, subset_name, cls)
-            os.makedirs(subset_dir, exist_ok=True)
-            for img in subset_imgs:
-                src_path = os.path.join(cls_path, img)
-                dst_path = os.path.join(subset_dir, img)
-                if os.path.isfile(src_path):
-                    shutil.copy2(src_path, dst_path)
-
-    print(f"Dataset successfully split into train/val/test under '{processed_dir}'.")
-
-
-# ============================================================
-# Create Keras ImageDataGenerators
-# ============================================================
-def create_generators(img_size=IMG_SIZE, batch_size=BATCH_SIZE):
-    """Return train, val, test generators with augmentation for training only."""
-    # Training generator with augmentation
-    train_datagen = ImageDataGenerator(
-        rescale=1./255,
-        rotation_range=15,
-        width_shift_range=0.1,
-        height_shift_range=0.1,
-        zoom_range=0.1,
-        horizontal_flip=True,
-        fill_mode="nearest"
+    print("Splitting dataset...")
+    X_temp, X_test, y_temp, y_test = train_test_split(
+        X, y,
+        test_size=split_cfg["test_size"],
+        random_state=split_cfg["random_state"],
+        stratify=y
+    )
+    val_ratio = split_cfg["val_size"] / (1 - split_cfg["test_size"])
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_temp, y_temp,
+        test_size=val_ratio,
+        random_state=split_cfg["random_state"],
+        stratify=y_temp
     )
 
-    # Validation/test generator (no augmentation)
-    test_datagen = ImageDataGenerator(rescale=1./255)
+    # Save datasets as .pkl
+    os.makedirs(processed_dir, exist_ok=True)
+    datasets = {
+        "X_train": X_train, "y_train": y_train,
+        "X_val": X_val, "y_val": y_val,
+        "X_test": X_test, "y_test": y_test
+    }
+    for name, data in datasets.items():
+        with open(os.path.join(processed_dir, f"{name}.pkl"), "wb") as f:
+            pickle.dump(data, f)
+    print("Preprocessing complete. Datasets saved to", processed_dir)
 
-    train_gen = train_datagen.flow_from_directory(
-        os.path.join(PROCESSED_DIR, "train"),
-        target_size=img_size,
-        batch_size=batch_size,
-        class_mode='categorical'
-    )
-
-    val_gen = test_datagen.flow_from_directory(
-        os.path.join(PROCESSED_DIR, "val"),
-        target_size=img_size,
-        batch_size=batch_size,
-        class_mode='categorical'
-    )
-
-    test_gen = test_datagen.flow_from_directory(
-        os.path.join(PROCESSED_DIR, "test"),
-        target_size=img_size,
-        batch_size=batch_size,
-        class_mode='categorical',
-        shuffle=False
-    )
-
-    return train_gen, val_gen, test_gen
-
-
-# ============================================================
-# Main execution
-# ============================================================
 if __name__ == "__main__":
-    os.makedirs(PROCESSED_DIR, exist_ok=True)
-
-    print("Splitting dataset on disk...")
-    split_dataset_on_disk()
-
-    print("Creating generators...")
-    train_gen, val_gen, test_gen = create_generators()
-
-    print("Generators ready. You can now feed them directly into model.fit():")
-    print(f"Train samples: {train_gen.n}, Validation samples: {val_gen.n}, Test samples: {test_gen.n}")
+    preprocess_pipeline()
