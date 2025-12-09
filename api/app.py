@@ -7,18 +7,25 @@ from tensorflow.keras.preprocessing.image import img_to_array
 from PIL import Image
 import json
 import io
+import os
+
+# ---------------------------
+# Base directory (project root)
+# ---------------------------
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # ---------------------------
 # Load class names
 # ---------------------------
-with open("configs/class_names.json", "r") as f:
+class_names_path = os.path.join(BASE_DIR, "configs", "class_names.json")
+with open(class_names_path, "r") as f:
     CLASS_NAMES = json.load(f)
 
 # ---------------------------
 # Load model once at startup
 # ---------------------------
-MODEL_PATH = "models/resnet50_best.h5"
-model = load_model(MODEL_PATH)
+model_path = os.path.join(BASE_DIR, "models", "resnet50_best.h5")
+model = load_model(model_path)
 
 # ---------------------------
 # FastAPI app
@@ -54,19 +61,18 @@ async def predict(file: UploadFile = File(...)):
     input_tensor = preprocess_image(image)
 
     preds = model.predict(input_tensor)
-    class_index = np.argmax(preds[0])
+    class_index = int(np.argmax(preds[0]))
     confidence = float(np.max(preds[0]))
     class_name = CLASS_NAMES[class_index]
 
     return {
         "class_name": class_name,
-        "class_index": int(class_index),
+        "class_index": class_index,
         "confidence": confidence
     }
-
 
 # ---------------------------
 # Run the API
 # ---------------------------
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("api.app:app", host="0.0.0.0", port=8000, reload=True)
