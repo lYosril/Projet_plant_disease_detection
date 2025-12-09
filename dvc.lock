@@ -3,6 +3,10 @@ stages:
   load:
     cmd: python -m src.data.load_data
     deps:
+    - path: config/data_config.yaml
+      hash: md5
+      md5: 44f39ebcc08fdac253d2700bb45c6308
+      size: 376
     - path: data/raw
       hash: md5
       md5: 7cdb072bef6b586c64ef2a2af256fbc1.dir
@@ -10,78 +14,122 @@ stages:
       nfiles: 20639
     - path: src/data/load_data.py
       hash: md5
-      md5: 7cabb699c3c4573a11cacbeb5319f9af
-      size: 2358
+      md5: b31fdb3530ea056b2880502693d76fe1
+      size: 2028
     outs:
     - path: data/intermediate/dataset.pkl
       hash: md5
-      md5: 28e606d10c7e56fb03aa976b9eaabac2
-      size: 3106461561
+      md5: 520047311181cae894cff2344c23c2b2
+      size: 3106461541
   preprocess:
     cmd: python -m src.data.preprocessing
     deps:
-    - path: data/raw
+    - path: config/data_config.yaml
       hash: md5
-      md5: 7cdb072bef6b586c64ef2a2af256fbc1.dir
-      size: 342230723
-      nfiles: 20639
+      md5: 44f39ebcc08fdac253d2700bb45c6308
+      size: 376
+    - path: data/intermediate/dataset.pkl
+      hash: md5
+      md5: 520047311181cae894cff2344c23c2b2
+      size: 3106461541
+    - path: src/data/load_data.py
+      hash: md5
+      md5: b31fdb3530ea056b2880502693d76fe1
+      size: 2028
     - path: src/data/preprocessing.py
       hash: md5
-      md5: ca376b45f3883b91eb710732f81377d3
-      size: 4387
+      md5: 0238e8f3b4c56cc3507a124e8df49452
+      size: 3414
     outs:
-    - path: data/processed/test
+    - path: data/processed/test.pkl
       hash: md5
-      md5: 0e2ad0dcfc03719140a1181475b76af9.dir
-      size: 34326299
-      nfiles: 2058
-    - path: data/processed/train
+      md5: e2d6ec4b99180f1095e9ad9434d12177
+      size: 621412848
+    - path: data/processed/train.pkl
       hash: md5
-      md5: 3abcf47e03840ac43c774b4caa82db1b.dir
-      size: 239919272
-      nfiles: 14459
-    - path: data/processed/val
+      md5: 71f4e0eadcb627eeddcda6f8634640cb
+      size: 2236513601
+    - path: data/processed/val.pkl
       hash: md5
-      md5: d67e2a247fc3b098eea8793b03410c19.dir
-      size: 67985152
-      nfiles: 4122
+      md5: 36586422032130f970e29d94eba284b6
+      size: 248535176
   train:
     cmd: python -m src.models.train
     deps:
-    - path: data/processed/train
+    - path: config/data_config.yaml
       hash: md5
-      md5: 3abcf47e03840ac43c774b4caa82db1b.dir
-      size: 239919272
-      nfiles: 14459
-    - path: data/processed/val
+      md5: 44f39ebcc08fdac253d2700bb45c6308
+      size: 376
+    - path: config/model_config.yaml
       hash: md5
-      md5: d67e2a247fc3b098eea8793b03410c19.dir
-      size: 67985152
-      nfiles: 4122
+      md5: 558b39b7f6f92ecbb1f7329334179ecd
+      size: 473
+    - path: data/processed/test.pkl
+      hash: md5
+      md5: e2d6ec4b99180f1095e9ad9434d12177
+      size: 621412848
+    - path: data/processed/train.pkl
+      hash: md5
+      md5: 71f4e0eadcb627eeddcda6f8634640cb
+      size: 2236513601
+    - path: data/processed/val.pkl
+      hash: md5
+      md5: 36586422032130f970e29d94eba284b6
+      size: 248535176
+    - path: src/data/load_data.py
+      hash: md5
+      md5: b31fdb3530ea056b2880502693d76fe1
+      size: 2028
+    - path: src/data/preprocessing.py
+      hash: md5
+      md5: 0238e8f3b4c56cc3507a124e8df49452
+      size: 3414
     - path: src/models/train.py
       hash: md5
-      md5: 54f8184e7a899215e4dba51c62cdb16c
-      size: 2787
+      md5: 7c3500f23ce3f961af6d868f20b52ce3
+      size: 7860
     outs:
-    - path: models
+    - path: models/efficientnet.h5
       hash: md5
-      md5: 296ec52b8f77305890fca691631ca701.dir
-      size: 112468624
-      nfiles: 2
+      md5: 46b9363541b26ec12a5fd0172b3336df
+      size: 32079848
+    - path: models/resnet50.h5
+      hash: md5
+      md5: f390041d3e7dba0e36c3fe8255a2f3f4
+      size: 143385336
   evaluate:
     cmd: python -m src.models.evaluate
     deps:
-    - path: models
+    - path: config/data_config.yaml
       hash: md5
-      md5: 296ec52b8f77305890fca691631ca701.dir
-      size: 112468624
-      nfiles: 2
+      md5: 44f39ebcc08fdac253d2700bb45c6308
+      size: 376
+    - path: config/model_config.yaml
+      hash: md5
+      md5: 558b39b7f6f92ecbb1f7329334179ecd
+      size: 473
+    - path: data/processed/test.pkl
+      hash: md5
+      md5: e2d6ec4b99180f1095e9ad9434d12177
+      size: 621412848
+    - path: models/efficientnet.h5
+      hash: md5
+      md5: 46b9363541b26ec12a5fd0172b3336df
+      size: 32079848
+    - path: models/resnet50.h5
+      hash: md5
+      md5: f390041d3e7dba0e36c3fe8255a2f3f4
+      size: 143385336
     - path: src/models/evaluate.py
       hash: md5
-      md5: d206dea27a0fb968551fb3b02cb4cb8f
-      size: 1609
+      md5: 53cce7afb6cbb799b647e40fbdf46a56
+      size: 2497
+    - path: src/models/train.py
+      hash: md5
+      md5: 7c3500f23ce3f961af6d868f20b52ce3
+      size: 7860
     outs:
     - path: reports/metrics.json
       hash: md5
-      md5: 255759be09644c9eb7bc8643ea45bf29
-      size: 145
+      md5: f07456f247458a2689610c7c41c523a1
+      size: 146

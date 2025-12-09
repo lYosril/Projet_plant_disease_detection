@@ -3,6 +3,7 @@ stages:
     cmd: python -m src.data.load_data
     deps:
       - src/data/load_data.py
+      - config/data_config.yaml
       - data/raw
     outs:
       - data/intermediate/dataset.pkl
@@ -11,25 +12,38 @@ stages:
     cmd: python -m src.data.preprocessing
     deps:
       - src/data/preprocessing.py
-      - data/raw
+      - src/data/load_data.py
+      - config/data_config.yaml
+      - data/intermediate/dataset.pkl
     outs:
-      - data/processed/train
-      - data/processed/val
-      - data/processed/test
+      - data/processed/train.pkl
+      - data/processed/val.pkl
+      - data/processed/test.pkl
 
   train:
     cmd: python -m src.models.train
     deps:
       - src/models/train.py
-      - data/processed/train
-      - data/processed/val
+      - src/data/preprocessing.py
+      - src/data/load_data.py
+      - config/model_config.yaml
+      - config/data_config.yaml
+      - data/processed/train.pkl
+      - data/processed/val.pkl
+      - data/processed/test.pkl
     outs:
-      - models
+      - models/resnet50.h5
+      - models/efficientnet.h5
 
   evaluate:
     cmd: python -m src.models.evaluate
     deps:
       - src/models/evaluate.py
-      - models
+      - src/models/train.py
+      - config/model_config.yaml
+      - config/data_config.yaml
+      - models/resnet50.h5
+      - models/efficientnet.h5
+      - data/processed/test.pkl
     outs:
       - reports/metrics.json

@@ -1,53 +1,62 @@
+# src/data/load_data.py
 import os
 import glob
 import pickle
-import numpy as np
 from PIL import Image
 import yaml
+import numpy as np
 
-# Get project root
+# Resolve project root relative to this file
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Load config
 CONFIG_PATH = os.path.join(ROOT_DIR, "config", "data_config.yaml")
+
 with open(CONFIG_PATH, "r") as f:
     cfg = yaml.safe_load(f)
 
-RAW_DIR = cfg["paths"]["raw_data"]
-INTERMEDIATE_FILE = cfg["paths"]["intermediate"]
-IMG_SIZE = tuple(cfg["image"]["size"])
+RAW_DIR = os.path.join(ROOT_DIR, cfg["paths"]["raw_data"])
+INTERMEDIATE_FILE = os.path.join(ROOT_DIR, cfg["paths"]["intermediate"])
+IMAGE_SIZE = tuple(cfg["image"]["size"])
+
 
 def load_dataset():
-    """Load images from raw directory and return X, y, classes."""
-    class_names = sorted([d for d in os.listdir(RAW_DIR) if os.path.isdir(os.path.join(RAW_DIR, d))])
-    images, labels = [], []
+    """Load images from RAW_DIR into numpy arrays and save intermediate .pkl."""
+    class_names = sorted([
+        d for d in os.listdir(RAW_DIR)
+        if os.path.isdir(os.path.join(RAW_DIR, d))
+    ])
+
+    images = []
+    labels = []
 
     print(f"Found classes: {class_names}")
 
-    for label_index, class_name in enumerate(class_names):
+    for idx, class_name in enumerate(class_names):
         class_dir = os.path.join(RAW_DIR, class_name)
-        img_paths = glob.glob(os.path.join(class_dir, "*.jpg"))
-        print(f"Loading {len(img_paths)} images from class: {class_name}")
+        image_paths = glob.glob(os.path.join(class_dir, "*.jpg"))
 
-        for img_path in img_paths:
+        print(f"Loading {len(image_paths)} images from class {class_name}")
+
+        for img_path in image_paths:
             try:
                 img = Image.open(img_path).convert("RGB")
-                img = img.resize(IMG_SIZE)
-                images.append(np.array(img))
-                labels.append(label_index)
-            except:
-                print(f"Error loading image: {img_path}")
+                img = img.resize(IMAGE_SIZE)
+                images.append(np.array(img, dtype=np.uint8))
+                labels.append(idx)
+            except Exception as e:
+                # don't raise — skip problematic files
+                print(f"Warning: error loading {img_path}: {e}")
 
     images = np.array(images)
     labels = np.array(labels)
 
-    print(f"\nDataset loaded: {len(images)} images, {len(class_names)} classes.")
-
-    return images, labels, class_names
-
-if __name__ == "__main__":
-    X, y, classes = load_dataset()
+    # Save intermediate dataset
     os.makedirs(os.path.dirname(INTERMEDIATE_FILE), exist_ok=True)
     with open(INTERMEDIATE_FILE, "wb") as f:
-        pickle.dump((X, y, classes), f)
-    print(f"Dataset saved to {INTERMEDIATE_FILE}")
+        pickle.dump((images, labels, class_names), f)
+
+    print(f"Dataset saved to {INTERMEDIATE_FILE} -> {len(images)} images, {len(class_names)} classes")
+    return images, labels, class_names
+
+
+if __name__ == "__main__":
+    load_dataset()
